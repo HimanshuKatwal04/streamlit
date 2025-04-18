@@ -46,7 +46,7 @@ def registration_page():
         save_user(user)
         st.session_state.user = user
         st.success("Registered successfully!")
-        st.experimental_rerun()
+        st.rerun()
 
 # Search & Recommendation Page
 def recommendation_page(user):
