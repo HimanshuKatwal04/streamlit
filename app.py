@@ -22,50 +22,92 @@ def save_user(user):
 
 # Registration page
 def registration_page():
-    st.title("New User Registration")
-    name = st.text_input("Name")
-    age = st.number_input("Age", min_value=0)
-    gender = st.selectbox("Gender", ["Male", "Female", "Other"])
-    state = st.text_input("State")
-    city = st.text_input("City")
-    pin_code = st.text_input("Pin Code")
-
-    allergy_options = ["Gluten", "Peanuts", "Dairy", "Soy", "Shellfish", "Eggs"]
-    allergies = st.multiselect("Food Allergies", allergy_options)
-
-    if st.button("Register"):
-        user = {
-            "name": name,
-            "age": age,
-            "gender": gender,
-            "state": state,
-            "city": city,
-            "pin_code": pin_code,
-            "allergies": [a.strip().lower() for a in allergies],
+    st.markdown("""
+    <style>
+        .main-title {
+            text-align: center;
+            font-size: 40px;
+            color: #FF6347;
+            font-weight: bold;
         }
-        save_user(user)
-        st.session_state.user = user
-        st.success("Registered successfully!")
-        st.experimental_rerun()
+        .stButton>button {
+            background-color: #FF6347;
+            color: white;
+            font-weight: bold;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="main-title">🍽️ Smart Food Recommender</div>', unsafe_allow_html=True)
+    st.image("https://cdn-icons-png.flaticon.com/512/135/135620.png", width=100)
+    st.subheader("👤 New User Registration")
+
+    with st.form("registration_form"):
+        name = st.text_input("Name")
+        age = st.number_input("Age", min_value=0)
+        gender = st.selectbox("Gender", ["Male", "Female", "Other"])
+        state = st.text_input("State")
+        city = st.text_input("City")
+        pin_code = st.text_input("Pin Code")
+
+        allergy_options = ["Gluten", "Peanuts", "Dairy", "Soy", "Shellfish", "Eggs"]
+        allergies = st.multiselect("Food Allergies", allergy_options)
+
+        submitted = st.form_submit_button("Register")
+        if submitted:
+            user = {
+                "name": name,
+                "age": age,
+                "gender": gender,
+                "state": state,
+                "city": city,
+                "pin_code": pin_code,
+                "allergies": [a.strip().lower() for a in allergies],
+            }
+            save_user(user)
+            st.session_state.user = user
+            st.success("🎉 Registered successfully!")
+            st.balloons()
+            st.experimental_rerun()
 
 # Search & Recommendation Page
 def recommendation_page(user):
-    st.title("Search Restaurants and Food")
+    st.markdown("""
+    <style>
+        .search-title {
+            text-align: center;
+            font-size: 32px;
+            font-weight: bold;
+            color: #20B2AA;
+        }
+        .food-card {
+            background-color: #F0F8FF;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="search-title">🔍 Search for Restaurants, Food or Brands</div>', unsafe_allow_html=True)
     query = st.text_input("Search for food, drinks, or brands")
 
     if query:
         with st.spinner("Fetching recommendations from Swiggy..."):
             results = get_recommendations(query, user)
-            st.subheader(f"Results for '{query}':")
-            for item in results:
-                st.markdown(f"""
-                **{item['name']}**  
-                📍 {item['location']}  
-                💰 {item['price']}  
-                ⭐ {item['rating']}  
-                🔗 [View]({item['url']})
-                ---
-                """)
+            if results:
+                for item in results:
+                    st.markdown(f"""
+                    <div class="food-card">
+                        <strong>{item['name']}</strong><br>
+                        📍 {item['location']}<br>
+                        💰 {item['price']}<br>
+                        ⭐ {item['rating']}<br>
+                        🔗 <a href="{item['url']}" target="_blank">View</a>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.warning("No matching results found.")
 
 # Swiggy-Based Recommendation Engine
 def get_recommendations(query, user):
