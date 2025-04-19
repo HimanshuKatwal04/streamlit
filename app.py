@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 import os
-from scraper import get_swiggy_results
+from scraper import get_swiggy_results  # Make sure this function is defined properly
 
 # File to store user data
 USER_DATA_FILE = "users.json"
@@ -34,51 +34,80 @@ def registration_page():
     allergies = st.multiselect("Food Allergies", allergy_options)
 
     if st.button("Register"):
-        user = {
-            "name": name,
-            "age": age,
-            "gender": gender,
-            "state": state,
-            "city": city,
-            "pin_code": pin_code,
-            "allergies": [a.strip().lower() for a in allergies],
-        }
-        save_user(user)
-        st.session_state.user = user
-        st.success("Registered successfully!")
-        st.rerun()
+        if not name or not state or not city or not pin_code:
+            st.error("Please fill all the required fields.")
+        else:
+            user = {
+                "name": name,
+                "age": age,
+                "gender": gender,
+                "state": state,
+                "city": city,
+                "pin_code": pin_code,
+                "allergies": [a.strip().lower() for a in allergies],
+            }
+            save_user(user)
+            st.session_state.user = user
+            st.success("Registered successfully!")
+            st.rerun()
 
-# Search & Recommendation Page
+# Login page
+def login_page():
+    st.title("User Login")
+    name = st.text_input("Enter your name")
+    if st.button("Login"):
+        users = load_users()
+        if name in users:
+            st.session_state.user = users[name]
+            st.success(f"Welcome back, {name}!")
+            st.rerun()
+        else:
+            st.error("User not found. Please register.")
+
+# Recommendation Page
 def recommendation_page(user):
     st.title("Search Restaurants and Food")
+
+    st.sidebar.markdown(f"""
+    **Logged in as:** {user['name']}  
+    📍 {user['city']}, {user['state']}  
+    ⚠️ Allergies: {", ".join(user['allergies']).title() or "None"}
+    """)
+
     query = st.text_input("Search for food, drinks, or brands")
 
     if query:
         with st.spinner("Fetching recommendations from Swiggy..."):
-            results = get_recommendations(query, user)
-            st.subheader(f"Results for '{query}':")
-            for item in results:
-                st.markdown(f"""
-                **{item['name']}**  
-                📍 {item['location']}  
-                💰 {item['price']}  
-                ⭐ {item['rating']}  
-                🔗 [View]({item['url']})
-                ---
-                """)
+            try:
+                results = get_recommendations(query, user)
+                if results:
+                    st.subheader(f"Results for '{query}':")
+                    for item in results:
+                        st.markdown(f"""
+                        **{item['name']}**  
+                        📍 {item['location']}  
+                        💰 {item['price']}  
+                        ⭐ {item['rating']}  
+                        🔗 [View]({item['url']})
+                        ---
+                        """)
+                else:
+                    st.warning("No safe results found based on your allergy preferences.")
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
 
-# Swiggy-Based Recommendation Engine
+# Recommendation Engine
 def get_recommendations(query, user):
     allergy_filter = user["allergies"]
     pin = user["pin_code"]
 
     all_results = get_swiggy_results(query, pin)
 
-    # Basic allergy filter (e.g., skip if "gluten" found in name and user has gluten allergy)
     filtered = []
     for item in all_results:
         name_lower = item["name"].lower()
-        if any(allergy in name_lower for allergy in allergy_filter):
+        desc = item.get("description", "").lower()
+        if any(allergy in name_lower or allergy in desc for allergy in allergy_filter):
             continue
         filtered.append(item)
 
@@ -89,7 +118,11 @@ def main():
     st.set_page_config(page_title="Smart Food Recommender", layout="wide")
 
     if "user" not in st.session_state:
-        registration_page()
+        option = st.sidebar.selectbox("Choose Action", ["Login", "Register"])
+        if option == "Login":
+            login_page()
+        else:
+            registration_page()
     else:
         recommendation_page(st.session_state.user)
 
